@@ -11,6 +11,7 @@ typedef asmlinkage long (*orig_open_t)(const char __user *filename, int flags, i
 pte_t *pte;
 unsigned int level;
 orig_open_t orig_open = NULL;
+static struct timer_list my_timer;
 sys_call_ptr_t *_sys_call_table = NULL;
 
 asmlinkage long hooked_open(const char __user *filename, int flags, int mode) {
@@ -18,6 +19,12 @@ asmlinkage long hooked_open(const char __user *filename, int flags, int mode) {
     ret = orig_open(filename, flags, mode);
     printk(KERN_DEBUG "file %s has been opened with mode %d {ret=%lu]\n", filename, mode, ret);
     return ret;
+}
+
+static void timer_callback(unsigned long data)
+{
+	printk( "timer_callback: put orig_sys_open in syscall table.\n");
+	_sys_call_table[__NR_open] = orig_open;
 }
 
 static void get_sys_call_table(void) {
@@ -53,6 +60,8 @@ static void get_sys_call_table(void) {
 }
 
 static int __init amark_init(void) {
+    int timeout_ms = 10000;
+
     printk("+ amark loaded\n");
 
     get_sys_call_table();
@@ -75,6 +84,10 @@ static int __init amark_init(void) {
     _sys_call_table[__NR_open] = (sys_call_ptr_t) hooked_open;
 
     printk("+ open hooked!\n");
+
+    setup_timer(&my_timer, timer_callback, 0);
+    printk("+ starting timer the hijacked syscall by the real one in %dms (%ld)\n", timeout_ms, jiffies);
+    mod_timer(&my_timer, jiffies + msecs_to_jiffies(timeout_ms));
 
     return 0;
 }
