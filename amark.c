@@ -52,7 +52,7 @@ static void get_sys_call_table(void) {
     }
 }
 
-int init_module() {
+static int __init amark_init(void) {
     printk("+ amark loaded\n");
 
     get_sys_call_table();
@@ -79,7 +79,7 @@ int init_module() {
     return 0;
 }
 
-void cleanup_module() {
+static void __exit amark_cleanup(void) {
     if (orig_open != NULL) {
         _sys_call_table[__NR_open] = (sys_call_ptr_t) orig_open;
         set_pte_atomic(pte, pte_clear_flags(*pte, _PAGE_RW));
@@ -87,3 +87,6 @@ void cleanup_module() {
 
     printk("+ Unloading module\n");
 }
+
+module_init(amark_init);
+module_exit(amark_cleanup);
