@@ -1,0 +1,4 @@
+- find a way to detect our rootkit in {k,}mem
+- compare vmlinux and virtual memory to detect our hijacked syscall
+- write a python module for volatility
+- inject code into vmlinux
