@@ -16,6 +16,26 @@ orig_open_t orig_open = NULL;
 static struct timer_list my_timer;
 sys_call_ptr_t *_sys_call_table = NULL;
 
+inline unsigned long disable_wp(void)
+{
+    unsigned long cr0;
+
+    preempt_disable();
+    barrier();
+
+    cr0 = read_cr0();
+    write_cr0(cr0 & ~X86_CR0_WP);
+    return cr0;
+}
+
+inline void restore_wp(unsigned long cr0)
+{
+    write_cr0(cr0);
+
+    barrier();
+    preempt_enable_no_resched();
+}
+
 asmlinkage long hooked_open(const char __user *filename, int flags, int mode) {
     long ret;
     ret = orig_open(filename, flags, mode);
