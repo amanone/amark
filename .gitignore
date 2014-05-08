@@ -8,3 +8,4 @@
 *.tmp_versions
 
 *.swp
+*.c.*
