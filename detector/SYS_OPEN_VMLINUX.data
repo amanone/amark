@@ -1,0 +1,21 @@
+c1143c20:	55                   	push   ebp
+c1143c21:	89 e5                	mov    ebp,esp
+c1143c23:	83 ec 10             	sub    esp,0x10
+c1143c26:	89 5d f4             	mov    DWORD PTR [ebp-0xc],ebx
+c1143c29:	89 75 f8             	mov    DWORD PTR [ebp-0x8],esi
+c1143c2c:	89 7d fc             	mov    DWORD PTR [ebp-0x4],edi
+c1143c2f:	e8 74 bb 46 00       	call   0xc15af7a8
+c1143c34:	b8 9c ff ff ff       	mov    eax,0xffffff9c
+c1143c39:	8b 7d 08             	mov    edi,DWORD PTR [ebp+0x8]
+c1143c3c:	8b 75 0c             	mov    esi,DWORD PTR [ebp+0xc]
+c1143c3f:	8b 5d 10             	mov    ebx,DWORD PTR [ebp+0x10]
+c1143c42:	89 fa                	mov    edx,edi
+c1143c44:	89 f1                	mov    ecx,esi
+c1143c46:	89 1c 24             	mov    DWORD PTR [esp],ebx
+c1143c49:	e8 e2 fd ff ff       	call   0xc1143a30
+c1143c4e:	8b 5d f4             	mov    ebx,DWORD PTR [ebp-0xc]
+c1143c51:	8b 75 f8             	mov    esi,DWORD PTR [ebp-0x8]
+c1143c54:	8b 7d fc             	mov    edi,DWORD PTR [ebp-0x4]
+c1143c57:	89 ec                	mov    esp,ebp
+c1143c59:	5d                   	pop    ebp
+c1143c5a:	c3                   	ret    
