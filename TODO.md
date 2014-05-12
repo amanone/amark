@@ -1,4 +1,6 @@
 - find a way to detect our rootkit in {k,}mem
-- compare vmlinux and virtual memory to detect our hijacked syscall
-- write a python module for volatility
+- rewrite/update detector/*.{py,sh} to detect every syscall
+- deploy and test it on a real Android Device (intel-based, 3.8.0-aia)
 - inject code into vmlinux
+- checksum vmlinux binary
+- pagination hijacking and mitigation
